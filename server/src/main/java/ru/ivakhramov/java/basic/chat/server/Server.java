@@ -46,4 +46,33 @@ public class Server {
             client.sendMessage(message);
         }
     }
+
+    public synchronized void privateMessage(String message, String toUsername, String fromUsername) {
+
+        boolean hasToUsername = false;
+
+        for (ClientHandler client : clients) {
+            if (client.getUsername().equals(toUsername)) {
+                client.sendMessage(message);
+                hasToUsername = true;
+                break;
+            }
+        }
+
+        if (hasToUsername) {
+            for (ClientHandler client : clients) {
+                if (client.getUsername().equals(fromUsername)) {
+                    client.sendMessage(message);
+                    break;
+                }
+            }
+        } else {
+            for (ClientHandler client : clients) {
+                if (client.getUsername().equals(fromUsername)) {
+                    client.sendMessage("Пользователя с ником " + toUsername + " не существует");
+                    break;
+                }
+            }
+        }
+    }
 }
