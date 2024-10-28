@@ -24,9 +24,21 @@ public class Client {
                 while (true) {
                     String message = in.readUTF();
                     if (message.startsWith("/")) {
+
                         if (message.startsWith("/exitok")) {
                             break;
                         }
+
+                        if (message.startsWith("/authok ")) {
+                            System.out.println("Аутентификация прошла успешно с именем пользователя: " +
+                                    message.split(" ")[1]);
+                        }
+
+                        if (message.startsWith("/regok ")) {
+                            System.out.println("Регистрация прошла успешно с именем пользователя: " +
+                                    message.split(" ")[1]);
+                        }
+
                     } else {
                         System.out.println(message);
                     }
