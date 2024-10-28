@@ -10,11 +10,18 @@ public class Server {
 
     private int port;
     private List<ClientHandler> clients;
+    private AuthenticatedProvider authenticatedProvider;
 
     public Server(int port) {
 
         this.port = port;
         clients = new ArrayList<>();
+        authenticatedProvider = new InMemoryAuthenticationProvider(this);
+        authenticatedProvider.initialize();
+    }
+
+    public AuthenticatedProvider getAuthenticatedProvider() {
+        return authenticatedProvider;
     }
 
     public void start() {
@@ -38,6 +45,15 @@ public class Server {
     public synchronized void unsubscribe(ClientHandler clientHandler) {
 
         clients.remove(clientHandler);
+    }
+
+    public boolean isUsernameBusy(String username) {
+        for (ClientHandler client : clients) {
+            if (client.getUsername().equals(username)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public synchronized void broadcastMessage(String message) {
