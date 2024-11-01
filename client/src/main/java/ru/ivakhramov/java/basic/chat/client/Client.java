@@ -2,8 +2,10 @@ package ru.ivakhramov.java.basic.chat.client;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.Scanner;
 
 public class Client {
@@ -43,7 +45,14 @@ public class Client {
                         System.out.println(message);
                     }
                 }
+            } catch (SocketException e) {
+                System.out.println("Ошибка: потеряна связь с сервером: ");
+                e.printStackTrace();
+            } catch (EOFException e) {
+                System.out.println("Ошибка: потеряна связь с сервером: ");
+                e.printStackTrace();
             } catch (IOException e) {
+                System.out.println("Ошибка: ");
                 e.printStackTrace();
             } finally {
                 disconnect();

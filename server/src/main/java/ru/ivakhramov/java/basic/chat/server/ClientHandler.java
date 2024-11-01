@@ -2,8 +2,10 @@ package ru.ivakhramov.java.basic.chat.server;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketException;
 
 public class ClientHandler {
 
@@ -12,6 +14,7 @@ public class ClientHandler {
     private DataInputStream in;
     private DataOutputStream out;
     private String username;
+    private UserRole role;
 
     public String getUsername() {
         return username;
@@ -19,6 +22,14 @@ public class ClientHandler {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public UserRole getRole() {
+        return role;
+    }
+
+    public void setRole(UserRole role) {
+        this.role = role;
     }
 
     public ClientHandler(Server server, Socket socket) throws IOException {
@@ -67,7 +78,7 @@ public class ClientHandler {
                                 continue;
                             }
                             if (server.getAuthenticatedProvider()
-                                    .registration(this, elements[1], elements[2], elements[3])) {
+                                    .registration(this, elements[1], elements[2], elements[3], UserRole.USER)) {
                                 break;
                             }
                             continue;
@@ -75,21 +86,69 @@ public class ClientHandler {
                     }
                 }
                 System.out.println("Клиент " + username + " успешно прошел аутентификацию");
+                sendMessage("Вы можете узнать список команд для работы с чатом с помощью команды /help");
 
                 //цикл работы
                 while (true) {
-                    sendMessage("Вы можете узнать список команд для работы с чатом с помощью команды /help");
                     String message = in.readUTF();
                     if (message.startsWith("/")) {
 
                         String[] substrings = message.split(" ");
 
-                        if (message.startsWith("/changeNickname")) {
+                        if (message.startsWith("/changeNickname ")) {
+
+                            if (substrings.length != 2) {
+                                sendMessage("Неверный формат команды /changeNickname ");
+                                continue;
+                            }
+
                             this.username = substrings[1];
                             sendMessage("Ваш новый ник: " + this.username);
                         }
 
-                        if (message.startsWith("/w")) {
+                        if (message.startsWith("/getNickname")) {
+
+                            sendMessage("Ваш ник: " + this.username);
+                        }
+
+                        if (message.startsWith("/changeRole ")) {
+
+                            if (substrings.length != 3) {
+                                sendMessage("Неверный формат команды /changeRole ");
+                                continue;
+                            }
+
+                            if (isRoleAdmin()) {
+                                if (isUsernameExist(substrings[1])) {
+                                    if (substrings[2].equals("ADMIN")) {
+                                        server.getClientByUsername(substrings[1]).role = UserRole.ADMIN;
+                                        sendMessage("Вы поменяли роль " + substrings[1] + " на " + server.getClientByUsername(substrings[1]).role);
+                                    } else if (substrings[2].equals("USER")) {
+                                        server.getClientByUsername(substrings[1]).role = server.getClientByUsername(substrings[1]).role;
+                                        sendMessage("Вы поменяли роль " + substrings[1] + " на " + this.role);
+                                    } else {
+                                        sendMessage("Указанная вами роль \"" + substrings[2] + "\" не существует");
+                                    }
+                                } else {
+                                    sendMessage("Пользователь с ником " + substrings[1] + " не зарегистрирован в чате");
+                                }
+                            } else {
+                                sendMessage("Вы не администратор и не можете менять роли пользователей");
+                            }
+                        }
+
+                        if (message.startsWith("/getRole")) {
+
+                            sendMessage("Ваша роль: " + this.role);
+                        }
+
+                        if (message.startsWith("/w ")) {
+
+                            if (substrings.length < 3) {
+                                sendMessage("Неверный формат команды /w ");
+                                continue;
+                            }
+
                             String privateUsername = substrings[1];
 
                             String bodyMessage = "";
@@ -100,26 +159,56 @@ public class ClientHandler {
                             server.privateMessage(username + " : " + bodyMessage, privateUsername, this.username);
                         }
 
+                        if (message.startsWith("/kick ")) {
+
+                            if (substrings.length != 2) {
+                                sendMessage("Неверный формат команды /kick ");
+                                continue;
+                            }
+
+                            if (isRoleAdmin()) {
+                                if (isUsernameExist(substrings[1])) {
+                                    server.kickUser(substrings[1]);
+                                    sendExitok(substrings[1]);
+                                    sendMessage("Клиент с ником " + substrings[1] + " отключен от чата");
+                                } else {
+                                    sendMessage("Пользователь с ником " + substrings[1] + " не зарегистрирован в чате");
+                                }
+                            } else {
+                                sendMessage("Вы не администратор и не можете удалять пользователей из чата");
+                            }
+                        }
+
                         if (message.startsWith("/help")) {
                             sendMessage("Вы можете воспользоваться следующими командами:\n" +
                                     "/auth \"login\" \"password\" - пройти аутентификацию\n" +
                                     "/reg \"login\" \"password\" \"username\" - пройти регистрацию\n" +
-                                    "/changeNickname - изменить ник\n" +
+                                    "/changeNickname \"ник\" - изменить ник\n" +
+                                    "/getNickname - узнать ник\n" +
+                                    "/changeRole \"ник\" \"ADMIN/USER\"- изменить роль (если вы администратор)\n" +
                                     "/w \"ник\" \"сообщение\" - отправить сообщение пользователю с ником \"ник\"\n" +
                                     "\"сообщение\" - отправить сообщение всем пользователям\n" +
+                                    "/kick \"username\" - удалить пользователя из чата (если вы администратор)\n" +
                                     "/exit - выйти из программы\n" +
                                     "/help - список команд");
                         }
 
                         if (message.startsWith("/exit")) {
-                            sendMessage("/exitok");
+                            sendExitok(this.username);
                             break;
                         }
                     } else {
                         server.broadcastMessage(username + " : " + message);
                     }
                 }
+            } catch (SocketException e) {
+                System.out.print("Ошибка: потеряна связь с клиентом: ");
+                e.printStackTrace();
+            } catch (EOFException e) {
+                System.out.print("Ошибка: потеряна связь с клиентом: ");
+                e.printStackTrace();
             } catch (IOException e) {
+                System.out.println("Ошибка: ");
                 e.printStackTrace();
             } finally {
                 disconnect();
@@ -134,6 +223,28 @@ public class ClientHandler {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void sendExitok(String username) {
+        for (ClientHandler client : server.getClients()) {
+            if (client.username.equals(username)) {
+                sendMessage("/exitok");
+                break;
+            }
+        }
+    }
+
+    private boolean isRoleAdmin() {
+
+        if (this.role.equals(UserRole.ADMIN)) {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isUsernameExist(String username) {
+
+        return server.getClientByUsername(username) != null;
     }
 
     public void disconnect() {

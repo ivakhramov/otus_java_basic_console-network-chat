@@ -10,12 +10,14 @@ public class InMemoryAuthenticationProvider implements AuthenticatedProvider {
         private String login;
         private String password;
         private String username;
+        private UserRole role;
 
-        public User(String login, String password, String username) {
+        public User(String login, String password, String username, UserRole role) {
 
             this.login = login;
             this.password = password;
             this.username = username;
+            this.role = role;
         }
     }
 
@@ -27,10 +29,8 @@ public class InMemoryAuthenticationProvider implements AuthenticatedProvider {
         this.server = server;
         this.users = new ArrayList<>();
 
-        this.users.add(new User("login1", "password1", "username1"));
-        this.users.add(new User("qwe", "qwe", "qwe1"));
-        this.users.add(new User("asd", "asd", "asd1"));
-        this.users.add(new User("zxc", "zxc", "zxc1"));
+        this.users.add(new User("admin", "admin", "default_admin", UserRole.ADMIN));
+        this.users.add(new User("user", "user", "default_user", UserRole.USER));
     }
 
     @Override
@@ -49,10 +49,21 @@ public class InMemoryAuthenticationProvider implements AuthenticatedProvider {
         return null;
     }
 
+    private UserRole getRoleByLogin(String login) {
+
+        for (User user : users) {
+            if (user.login.equals(login)) {
+                return user.role;
+            }
+        }
+        return null;
+    }
+
     @Override
     public synchronized boolean authenticate(ClientHandler clientHandler, String login, String password) {
 
         String authName = getUsernameByLoginAndPassword(login, password);
+        UserRole authRole = getRoleByLogin(login);
 
         if (authName == null) {
             clientHandler.sendMessage("Некорректный логин/пароль");
@@ -65,6 +76,7 @@ public class InMemoryAuthenticationProvider implements AuthenticatedProvider {
         }
 
         clientHandler.setUsername(authName);
+        clientHandler.setRole(authRole);
         server.subscribe(clientHandler);
         clientHandler.sendMessage("/authok " + authName);
         return true;
@@ -91,7 +103,7 @@ public class InMemoryAuthenticationProvider implements AuthenticatedProvider {
     }
 
     @Override
-    public boolean registration(ClientHandler clientHandler, String login, String password, String username) {
+    public boolean registration(ClientHandler clientHandler, String login, String password, String username, UserRole role) {
 
         if (login.trim().length() < 3 || password.trim().length() < 6
                 || username.trim().length() < 2) {
@@ -110,8 +122,9 @@ public class InMemoryAuthenticationProvider implements AuthenticatedProvider {
             return false;
         }
 
-        users.add(new User(login, password, username));
+        users.add(new User(login, password, username, role));
         clientHandler.setUsername(username);
+        clientHandler.setRole(role);
         server.subscribe(clientHandler);
         clientHandler.sendMessage("/regok " + username);
         return true;

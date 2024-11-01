@@ -12,6 +12,10 @@ public class Server {
     private List<ClientHandler> clients;
     private AuthenticatedProvider authenticatedProvider;
 
+    public List<ClientHandler> getClients() {
+        return clients;
+    }
+
     public Server(int port) {
 
         this.port = port;
@@ -30,7 +34,7 @@ public class Server {
             System.out.println("Сервер запущен на порту: " + port);
             while (true) {
                 Socket socket = serverSocket.accept();
-                subscribe(new ClientHandler(this, socket));
+                new ClientHandler(this, socket);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -47,7 +51,27 @@ public class Server {
         clients.remove(clientHandler);
     }
 
-    public boolean isUsernameBusy(String username) {
+    public synchronized void kickUser(String username) {
+
+        for (ClientHandler client : clients) {
+            if (client.getUsername().equals(username)) {
+                client.sendMessage("Вы были отключены от сервера администратором");
+                client.disconnect();
+                break;
+            }
+        }
+    }
+
+    public synchronized ClientHandler getClientByUsername(String username) {
+        for (ClientHandler client : clients) {
+            if (client.getUsername().equals(username)) {
+                return client;
+            }
+        }
+        return null;
+    }
+
+    public synchronized boolean isUsernameBusy(String username) {
         for (ClientHandler client : clients) {
             if (client.getUsername().equals(username)) {
                 return true;
