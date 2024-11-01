@@ -2,8 +2,10 @@ package ru.ivakhramov.java.basic.chat.server;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketException;
 
 public class ClientHandler {
 
@@ -75,21 +77,38 @@ public class ClientHandler {
                     }
                 }
                 System.out.println("Клиент " + username + " успешно прошел аутентификацию");
+                sendMessage("Вы можете узнать список команд для работы с чатом с помощью команды /help");
 
                 //цикл работы
                 while (true) {
-                    sendMessage("Вы можете узнать список команд для работы с чатом с помощью команды /help");
                     String message = in.readUTF();
                     if (message.startsWith("/")) {
 
                         String[] substrings = message.split(" ");
 
-                        if (message.startsWith("/changeNickname")) {
+                        if (message.startsWith("/changeNickname ")) {
+
+                            if (substrings.length != 2) {
+                                sendMessage("Неверный формат команды /changeNickname ");
+                                continue;
+                            }
+
                             this.username = substrings[1];
                             sendMessage("Ваш новый ник: " + this.username);
                         }
 
-                        if (message.startsWith("/w")) {
+                        if (message.startsWith("/getNickname")) {
+
+                            sendMessage("Ваш ник: " + this.username);
+                        }
+
+                        if (message.startsWith("/w ")) {
+
+                            if (substrings.length < 3) {
+                                sendMessage("Неверный формат команды /w ");
+                                continue;
+                            }
+
                             String privateUsername = substrings[1];
 
                             String bodyMessage = "";
@@ -104,7 +123,8 @@ public class ClientHandler {
                             sendMessage("Вы можете воспользоваться следующими командами:\n" +
                                     "/auth \"login\" \"password\" - пройти аутентификацию\n" +
                                     "/reg \"login\" \"password\" \"username\" - пройти регистрацию\n" +
-                                    "/changeNickname - изменить ник\n" +
+                                    "/changeNickname \"ник\" - изменить ник\n" +
+                                    "/getNickname - узнать ник\n" +
                                     "/w \"ник\" \"сообщение\" - отправить сообщение пользователю с ником \"ник\"\n" +
                                     "\"сообщение\" - отправить сообщение всем пользователям\n" +
                                     "/exit - выйти из программы\n" +
@@ -119,7 +139,14 @@ public class ClientHandler {
                         server.broadcastMessage(username + " : " + message);
                     }
                 }
+            } catch (SocketException e) {
+                System.out.print("Ошибка: потеряна связь с клиентом: ");
+                e.printStackTrace();
+            } catch (EOFException e) {
+                System.out.print("Ошибка: потеряна связь с клиентом: ");
+                e.printStackTrace();
             } catch (IOException e) {
+                System.out.println("Ошибка: ");
                 e.printStackTrace();
             } finally {
                 disconnect();
