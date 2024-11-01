@@ -30,7 +30,7 @@ public class Server {
             System.out.println("Сервер запущен на порту: " + port);
             while (true) {
                 Socket socket = serverSocket.accept();
-                subscribe(new ClientHandler(this, socket));
+                new ClientHandler(this, socket);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -47,7 +47,7 @@ public class Server {
         clients.remove(clientHandler);
     }
 
-    public boolean isUsernameBusy(String username) {
+    public synchronized boolean isUsernameBusy(String username) {
         for (ClientHandler client : clients) {
             if (client.getUsername().equals(username)) {
                 return true;
