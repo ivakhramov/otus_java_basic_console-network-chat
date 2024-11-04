@@ -118,22 +118,24 @@ public class ClientHandler {
                                 continue;
                             }
 
-                            if (isRoleAdmin()) {
-                                if (isUsernameExist(substrings[1])) {
-                                    if (substrings[2].equals("ADMIN")) {
-                                        server.getClientByUsername(substrings[1]).role = UserRole.ADMIN;
-                                        sendMessage("Вы поменяли роль " + substrings[1] + " на " + server.getClientByUsername(substrings[1]).role);
-                                    } else if (substrings[2].equals("USER")) {
-                                        server.getClientByUsername(substrings[1]).role = server.getClientByUsername(substrings[1]).role;
-                                        sendMessage("Вы поменяли роль " + substrings[1] + " на " + this.role);
-                                    } else {
-                                        sendMessage("Указанная вами роль \"" + substrings[2] + "\" не существует");
-                                    }
-                                } else {
-                                    sendMessage("Пользователь с ником " + substrings[1] + " не зарегистрирован в чате");
-                                }
-                            } else {
+                            if (!isRoleAdmin()) {
                                 sendMessage("Вы не администратор и не можете менять роли пользователей");
+                                continue;
+                            }
+
+                            if (!isUsernameExist(substrings[1])) {
+                                sendMessage("Пользователь с ником " + substrings[1] + " не зарегистрирован в чате");
+                                continue;
+                            }
+
+                            if (substrings[2].equals("ADMIN")) {
+                                server.getClientByUsername(substrings[1]).role = UserRole.ADMIN;
+                                sendMessage("Вы поменяли роль " + substrings[1] + " на " + server.getClientByUsername(substrings[1]).role);
+                            } else if (substrings[2].equals("USER")) {
+                                server.getClientByUsername(substrings[1]).role = server.getClientByUsername(substrings[1]).role;
+                                sendMessage("Вы поменяли роль " + substrings[1] + " на " + this.role);
+                            } else {
+                                sendMessage("Указанная вами роль \"" + substrings[2] + "\" не существует");
                             }
                         }
 
@@ -166,17 +168,19 @@ public class ClientHandler {
                                 continue;
                             }
 
-                            if (isRoleAdmin()) {
-                                if (isUsernameExist(substrings[1])) {
-                                    server.kickUser(substrings[1]);
-                                    sendExitok(substrings[1]);
-                                    sendMessage("Клиент с ником " + substrings[1] + " отключен от чата");
-                                } else {
-                                    sendMessage("Пользователь с ником " + substrings[1] + " не зарегистрирован в чате");
-                                }
-                            } else {
+                            if (!isRoleAdmin()) {
                                 sendMessage("Вы не администратор и не можете удалять пользователей из чата");
+                                continue;
                             }
+
+                            if (!isUsernameExist(substrings[1])) {
+                                sendMessage("Пользователь с ником " + substrings[1] + " не зарегистрирован в чате");
+                                continue;
+                            }
+
+                            server.kickUser(substrings[1]);
+                            sendExitok(substrings[1]);
+                            sendMessage("Клиент с ником " + substrings[1] + " отключен от чата");
                         }
 
                         if (message.startsWith("/help")) {
@@ -236,7 +240,7 @@ public class ClientHandler {
 
     private boolean isRoleAdmin() {
 
-        return this.role.equals(UserRole.ADMIN);
+        return this.role == UserRole.ADMIN;
     }
 
     private boolean isUsernameExist(String username) {
