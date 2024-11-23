@@ -3,6 +3,7 @@ package ru.ivakhramov.java.basic.chat.server;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,16 +12,22 @@ public class Server {
     private int port;
     private List<ClientHandler> clients;
     private AuthenticatedProvider authenticatedProvider;
+    private Connection connection;
 
     public List<ClientHandler> getClients() {
         return clients;
     }
 
-    public Server(int port) {
+    public Connection getConnection() {
+        return connection;
+    }
+
+    public Server(int port, Connection connection) {
 
         this.port = port;
+        this.connection = connection;
         clients = new ArrayList<>();
-        authenticatedProvider = new InMemoryAuthenticationProvider(this);
+        authenticatedProvider = new InDatabaseAuthenticationProvider(this);
         authenticatedProvider.initialize();
     }
 
@@ -51,10 +58,10 @@ public class Server {
         clients.remove(clientHandler);
     }
 
-    public synchronized void kickUser(String username) {
+    public synchronized void kickUser(String name) {
 
         for (ClientHandler client : clients) {
-            if (client.getUsername().equals(username)) {
+            if (client.getUser().getName().equals(name)) {
                 client.sendMessage("Вы были отключены от сервера администратором");
                 client.disconnect();
                 break;
@@ -62,18 +69,28 @@ public class Server {
         }
     }
 
-    public synchronized ClientHandler getClientByUsername(String username) {
+    public synchronized int getUserIdByName(String name) {
+
         for (ClientHandler client : clients) {
-            if (client.getUsername().equals(username)) {
+            if (client.getUser().getName().equals(name)) {
+                return client.getUser().getId();
+            }
+        }
+        return -1;
+    }
+
+    public synchronized ClientHandler getClientByName(String name) {
+        for (ClientHandler client : clients) {
+            if (client.getUser().getName().equals(name)) {
                 return client;
             }
         }
         return null;
     }
 
-    public synchronized boolean isUsernameBusy(String username) {
+    public synchronized boolean isNameBusy(String name) {
         for (ClientHandler client : clients) {
-            if (client.getUsername().equals(username)) {
+            if (client.getUser().getName().equals(name)) {
                 return true;
             }
         }
@@ -87,29 +104,29 @@ public class Server {
         }
     }
 
-    public synchronized void privateMessage(String message, String toUsername, String fromUsername) {
+    public synchronized void privateMessage(String message, String toName, String fromName) {
 
-        boolean hasToUsername = false;
+        boolean hasToName = false;
 
         for (ClientHandler client : clients) {
-            if (client.getUsername().equals(toUsername)) {
+            if (client.getUser().getName().equals(toName)) {
                 client.sendMessage(message);
-                hasToUsername = true;
+                hasToName = true;
                 break;
             }
         }
 
-        if (hasToUsername) {
+        if (hasToName) {
             for (ClientHandler client : clients) {
-                if (client.getUsername().equals(fromUsername)) {
+                if (client.getUser().getName().equals(fromName)) {
                     client.sendMessage(message);
                     break;
                 }
             }
         } else {
             for (ClientHandler client : clients) {
-                if (client.getUsername().equals(fromUsername)) {
-                    client.sendMessage("Пользователя с ником " + toUsername + " не существует");
+                if (client.getUser().getName().equals(fromName)) {
+                    client.sendMessage("Пользователя с ником " + toName + " не существует");
                     break;
                 }
             }
