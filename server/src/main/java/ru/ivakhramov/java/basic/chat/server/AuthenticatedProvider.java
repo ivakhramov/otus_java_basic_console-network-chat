@@ -6,5 +6,5 @@ public interface AuthenticatedProvider {
 
     boolean authenticate(ClientHandler clientHandler, String login, String password);
 
-    boolean registration(ClientHandler clientHandler, String login, String password, String username, UserRole role);
+    boolean registration(ClientHandler clientHandler, String login, String password, String name, EnumRole role);
 }

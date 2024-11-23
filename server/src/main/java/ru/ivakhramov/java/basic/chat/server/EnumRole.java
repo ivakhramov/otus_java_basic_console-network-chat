@@ -1,6 +1,6 @@
 package ru.ivakhramov.java.basic.chat.server;
 
-public enum UserRole {
+public enum EnumRole {
     ADMIN,
     USER
 }
